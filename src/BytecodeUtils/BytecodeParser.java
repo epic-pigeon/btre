@@ -33,7 +33,7 @@ public class BytecodeParser {
         ArrayList<Byte> result = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
             if (i != 0) result.add(ARGUMENT_SEPARATOR);
-            for (byte aByte: args[i]) {
+            for (byte aByte: encodeValue(args[i])) {
                 result.add(aByte);
             }
         }
@@ -50,9 +50,10 @@ public class BytecodeParser {
         for (int i = 0; i < code.length; i++) {
             if (code[i] == OPCODE_SEPARATOR) {
                 i++;
-                if (code[i] == OPCODE_SEPARATOR) {
+                if (i < code.length && code[i] == OPCODE_SEPARATOR) {
                     result.get(currentArg).add(OPCODE_SEPARATOR);
                 } else {
+                    if (result.size() == 1 && result.get(0).size() == 0) return new byte[][]{};
                     byte[][] ret = new byte[result.size()][];
                     for (int j = 0; j < result.size(); j++) {
                         ret[j] = new byte[result.get(j).size()];
@@ -72,6 +73,7 @@ public class BytecodeParser {
                 }
             } else result.get(currentArg).add(code[i]);
         }
+        if (result.size() == 1 && result.get(0).size() == 0) return new byte[][]{};
         byte[][] ret = new byte[result.size()][];
         for (int j = 0; j < result.size(); j++) {
             ret[j] = new byte[result.get(j).size()];
@@ -87,7 +89,7 @@ public class BytecodeParser {
         for (i = 0; i < code.length; i++) {
             if (code[i] == OPCODE_SEPARATOR) {
                 i++;
-                if (code[i] != OPCODE_SEPARATOR) break;
+                if (i >= code.length || code[i] != OPCODE_SEPARATOR) break;
             }
         }
         return Arrays.copyOfRange(code, i, code.length);
@@ -110,6 +112,11 @@ public class BytecodeParser {
         return result;
     }
 
+    public static void printByteArray(byte[] bytes) {
+        for (byte aByte: bytes) System.out.print(aByte + " ");
+        System.out.println();
+    }
+
     public static byte[] buildBytecode(List<OpCode> opCodes) {
         ArrayList<Byte> result = new ArrayList<>();
         for (OpCode opCode: opCodes) {
@@ -119,5 +126,11 @@ public class BytecodeParser {
         byte[] ret = new byte[result.size()];
         for (int j = 0; j < result.size(); j++) ret[j] = result.get(j);
         return ret;
+    }
+
+    public static void describeBytecode(byte[] code) {
+        for (OpCode opCode: parseBytecode(code)) {
+            System.out.println(opCode.describe());
+        }
     }
 }

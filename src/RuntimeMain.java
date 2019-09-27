@@ -1,10 +1,12 @@
+import BytecodeUtils.OpCodeExecutor;
 import FileUtils.FileManager;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class Main {
+public class RuntimeMain {
     private static class UniqueOrWarnMap<T, E> extends HashMap<T, E> {
         @Override
         public E put(T key, E value) {
@@ -50,7 +52,7 @@ public class Main {
 
     private static class None {}
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Map<String, Object> params = parseArgs(args, "-");
         ArrayList<File> filePath = new ArrayList<>();
         if (System.getenv("BTREPATH") != null) {
@@ -66,5 +68,7 @@ public class Main {
                 throw new RuntimeException("Unknown parameter \"" + entry.getKey() + "\"");
             }
         }
+        OpCodeExecutor.setFilePath(filePath);
+        Test.main(args);
     }
 }

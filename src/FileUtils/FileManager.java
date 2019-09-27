@@ -1,6 +1,8 @@
 package FileUtils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -88,5 +90,11 @@ public class FileManager {
 
     public static byte[] readFile(File file) throws IOException {
         return Files.readAllBytes(Paths.get(file.toURI()));
+    }
+
+    public static void writeFile(File file, byte[] bytes) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(bytes);
+        }
     }
 }

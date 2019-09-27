@@ -1,21 +1,73 @@
 package OpCodes;
 
 import BytecodeUtils.BytecodeParser;
+import BytecodeUtils.OpCodeExecutor;
 
+import java.io.File;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class OpCode {
+    private static class IncludeOpCode {
+        public static String describe(byte[][] args) {
+            return "path = \"" + OpCodeExecutor.stringFromBytes(args[0]) + "\"";
+        }
+        public static OpCode build(File toInclude) {
+            return new OpCode(OpCode.Type.INCLUDE, new byte[][]{
+                    toInclude.getAbsolutePath().getBytes(StandardCharsets.UTF_8)
+            });
+        }
+    }
+    private static class GotoOpCode {
+        public static String describe(byte[][] args) {
+            return "" + OpCodeExecutor.intFromBytes(args[0]);
+        }
+        public static OpCode build(Integer label) {
+            return new OpCode(OpCode.Type.GOTO, new byte[][]{
+
+            });
+        }
+    }
+    private static class LabelOpCode {
+        public static String describe(byte[][] args) {
+            return "" + OpCodeExecutor.intFromBytes(args[0]);
+        }
+        public static OpCode build(File toInclude) {
+            return new OpCode(OpCode.Type.INCLUDE, new byte[][]{
+                    toInclude.getAbsolutePath().getBytes(StandardCharsets.UTF_8)
+            });
+        }
+    }
+    private static class QuackOpCode {
+        public static String describe(byte[][] args) {
+            return "just quack";
+        }
+        public static OpCode build(File toInclude) {
+            return new OpCode(OpCode.Type.INCLUDE, new byte[][]{
+                    toInclude.getAbsolutePath().getBytes(StandardCharsets.UTF_8)
+            });
+        }
+    }
     public enum Type {
-        INCLUDE((byte) 0x02), COPY((byte) 0x03),
+        INCLUDE((byte) 0x02, IncludeOpCode.class), COPY((byte) 0x03),
         INVOKE_VIRTUAL((byte) 0x04), CAST((byte) 0x05),
         INVOKE_STATIC((byte) 0x06), STORE((byte) 0x06),
         LOAD((byte) 0x07), INT_CONST((byte) 0x08),
-        STRING_CONST((byte) 0x09);
+        STRING_CONST((byte) 0x09), GOTO((byte) 0x10, GotoOpCode.class),
+        LABEL((byte) 0x11, LabelOpCode.class), CLASS_DEF((byte) 0x12),
+        METHOD_DEF((byte) 0x13), PRINT_QUACK((byte) 0x14, QuackOpCode.class);
 
         private byte code;
+        private Class opcodeClass;
 
         Type(byte code) {
             this.code = code;
+        }
+
+        Type(byte code, Class opcodeClass) {
+            this.code = code;
+            this.opcodeClass = opcodeClass;
         }
 
         public byte getCode() {
@@ -26,6 +78,10 @@ public class OpCode {
             for (Type type: values()) if (type.getCode() == code) return type;
             return null;
         }
+
+        public Class getOpcodeClass() {
+            return opcodeClass;
+        }
     }
 
     private Type type;
@@ -34,6 +90,19 @@ public class OpCode {
     public OpCode(Type type, byte[][] arg) {
         Objects.requireNonNull(this.type = type, "Type should not be null");
         Objects.requireNonNull(this.args = arg, "Argument should not be null");
+    }
+
+    public String describe() {
+        String result = "Opcode " + type.name();
+        try {
+            Class opcodeClass = type.opcodeClass;
+            Method method = opcodeClass.getMethod("describe", byte[][].class);
+            String res = (String) method.invoke(null, (Object) args);
+            result += ": " + res;
+        } catch (Throwable e) {
+            //e.printStackTrace();
+        }
+        return result;
     }
 
     public Type getType() {
@@ -50,5 +119,10 @@ public class OpCode {
         result[0] = type.getCode();
         System.arraycopy(encodedArg, 0, result, 1, encodedArg.length);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return describe();
     }
 }
