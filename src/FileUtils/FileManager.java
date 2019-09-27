@@ -73,16 +73,10 @@ public class FileManager {
         return result;
     }
 
-    public static File getFile(List<File> filePath, String path) {
-        File toFind = new File(path);
+    public static File getFile(List<File> filePath, String name) {
         for (File file: filePath) {
-            try {
-                if (Files.isSameFile(Paths.get(file.toURI()), Paths.get(toFind.toURI()))) {
-                    return file;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
+            if (file.getName().equals(name)) {
+                return file;
             }
         }
         return null;

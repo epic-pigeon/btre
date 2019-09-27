@@ -117,6 +117,10 @@ public class BytecodeParser {
         System.out.println();
     }
 
+    public static void printByteArray(byte[][] bytes) {
+        for (byte[] aByte: bytes) printByteArray(aByte);
+    }
+
     public static byte[] buildBytecode(List<OpCode> opCodes) {
         ArrayList<Byte> result = new ArrayList<>();
         for (OpCode opCode: opCodes) {

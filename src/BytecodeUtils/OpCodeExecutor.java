@@ -5,12 +5,15 @@ import OpCodes.OpCode;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class OpCodeExecutor {
-    private static List<File> filePath;
+    public static final Charset defaultCharset = StandardCharsets.UTF_8;
+
+    private static List<File> filePath = null;
 
     public static List<File> getFilePath() {
         return filePath;
@@ -21,7 +24,6 @@ public class OpCodeExecutor {
     }
 
     public static class Environment {
-        private List<BTREObject> variables = new ArrayList<>();
         private Map<String, BTREClass> classes = new HashMap<>();
         private Map<String, Environment> environments = new HashMap<>();
 
@@ -33,14 +35,6 @@ public class OpCodeExecutor {
             this.environments = environments;
         }
 
-        public List<BTREObject> getVariables() {
-            return variables;
-        }
-
-        public void setVariables(List<BTREObject> variables) {
-            this.variables = variables;
-        }
-
         public Map<String, BTREClass> getClasses() {
             return classes;
         }
@@ -49,8 +43,7 @@ public class OpCodeExecutor {
             this.classes = classes;
         }
 
-        public Environment(List<BTREObject> variables, Map<String, BTREClass> classes, Map<String, Environment> environments) {
-            this.variables = variables;
+        public Environment(Map<String, BTREClass> classes, Map<String, Environment> environments) {
             this.classes = classes;
             this.environments = environments;
         }
@@ -72,7 +65,7 @@ public class OpCodeExecutor {
     }
 
     public static void checkParams(byte[][] args, String name, int... possibleLengths) {
-        for (int l: possibleLengths) if (args.length == l) return;
+        for (int l : possibleLengths) if (args.length == l) return;
         StringBuilder string = new StringBuilder();
         for (int i = 0; i < possibleLengths.length; i++) {
             if (i != 0) {
@@ -88,7 +81,11 @@ public class OpCodeExecutor {
     }
 
     public static String stringFromBytes(byte[] bytes) {
-        return new String(bytes, StandardCharsets.UTF_8);
+        return new String(bytes, defaultCharset);
+    }
+
+    public static byte[] bytesFromString(String string) {
+        return string.getBytes(defaultCharset);
     }
 
     public static int intFromBytes(byte[] bytes) {
@@ -105,6 +102,7 @@ public class OpCodeExecutor {
             result.add((byte) (num % 256));
             num /= 256;
         }
+        if (result.size() == 0) result.add((byte) 0);
         byte[] ret = new byte[result.size()];
         for (int i = 0; i < result.size(); i++) {
             ret[i] = result.get(i);
@@ -112,20 +110,31 @@ public class OpCodeExecutor {
         return ret;
     }
 
-    private static Object runBytecode(byte[] code, Environment environment, BTREObject self, BTREObject... variables) {
-        boolean isFunction = self != null && variables != null;
+    private static Object runBytecode(byte[] code, Environment environment, BTREObject self, BTREObject... args) {
+        boolean isFunction = self != null && args != null;
         Environment env = isFunction ? new Environment(
-                new ArrayList<BTREObject>(){{
-                    add(self); addAll(Arrays.asList(variables));
-                }},
                 environment.classes,
                 environment.environments
         ) : environment;
         BTREObject ret = null;
+        List<BTREObject> variables = null;
+        if (isFunction) {
+            variables = new ArrayList<BTREObject>() {{
+                add(self);
+                addAll(Arrays.asList(args));
+            }};
+        }
         List<OpCode> opCodes = BytecodeParser.parseBytecode(code);
         Stack<BTREObject> stack = new Stack<>();
+        Supplier<BTREObject> stackAccessor = () -> {
+            if (stack.empty()) {
+                throw new RuntimeException("Cannot fetch from stack");
+            } else {
+                return stack.pop();
+            }
+        };
         Map<Integer, Integer> labels = new HashMap<>();
-        for (int i = 0; i < opCodes.size(); i++) {
+        kar: for (int i = 0; i < opCodes.size(); i++) {
             OpCode opCode = opCodes.get(i);
             switch (opCode.getType()) {
                 case INCLUDE: {
@@ -153,7 +162,8 @@ public class OpCodeExecutor {
                     if (line == null) {
                         while (true) {
                             i++;
-                            if (i >= opCodes.size()) throw new RuntimeException("Error in opcode GOTO: Label " + number + " does not exist");
+                            if (i >= opCodes.size())
+                                throw new RuntimeException("Error in opcode GOTO: Label " + number + " does not exist");
                             if (opCodes.get(i).getType() == OpCode.Type.LABEL) {
                                 checkParams(opCodes.get(i).getArgs(), "LABEL", 1);
                                 if (number == intFromBytes(opCodes.get(i).getArgs()[0])) {
@@ -166,9 +176,13 @@ public class OpCodeExecutor {
                     } else i = line;
                 } break;
                 case PRINT_QUACK: {
-                    if (opCode.getArgs().length > 0) throw new RuntimeException("Quacking does not requackire parameters!");
+                    if (opCode.getArgs().length > 0)
+                        throw new RuntimeException("Quacking does not requackire parameters!");
                     System.out.println("quack");
                 } break;
+                case RETURN: {
+                    ret = stackAccessor.get();
+                } break kar;
             }
         }
         return isFunction ? ret : env;
@@ -233,7 +247,8 @@ public class OpCodeExecutor {
             List<BTREClass> result = new ArrayList<>();
             result.add(this);
             if (parent != null) result.addAll(parent.getAllAssignable());
-            for (Map.Entry<BTREClass, BTREMethod> entry: casts.entrySet()) result.addAll(entry.getKey().getAllAssignable());
+            for (Map.Entry<BTREClass, BTREMethod> entry : casts.entrySet())
+                result.addAll(entry.getKey().getAllAssignable());
             return result;
         }
 
@@ -242,12 +257,12 @@ public class OpCodeExecutor {
         }
     }
 
-    private static<T, E> Map<T, E> joinMaps(Map<T, E> map1, Map<T, E> map2) {
+    private static <T, E> Map<T, E> joinMaps(Map<T, E> map1, Map<T, E> map2) {
         Map<T, E> result = new HashMap<>();
-        for (Map.Entry<T, E> entry: map1.entrySet()) {
+        for (Map.Entry<T, E> entry : map1.entrySet()) {
             result.put(entry.getKey(), entry.getValue());
         }
-        for (Map.Entry<T, E> entry: map2.entrySet()) {
+        for (Map.Entry<T, E> entry : map2.entrySet()) {
             result.put(entry.getKey(), entry.getValue());
         }
         return result;

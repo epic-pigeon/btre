@@ -5,48 +5,47 @@ import BytecodeUtils.OpCodeExecutor;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class OpCode {
-    private static class IncludeOpCode {
+    public static class IncludeOpCode {
         public static String describe(byte[][] args) {
             return "path = \"" + OpCodeExecutor.stringFromBytes(args[0]) + "\"";
         }
-        public static OpCode build(File toInclude) {
-            return new OpCode(OpCode.Type.INCLUDE, new byte[][]{
-                    toInclude.getAbsolutePath().getBytes(StandardCharsets.UTF_8)
+        public static OpCode build(String filename) {
+            return new OpCode(Type.INCLUDE, new byte[][]{
+                    OpCodeExecutor.bytesFromString(filename)
             });
         }
     }
-    private static class GotoOpCode {
+    public static class GotoOpCode {
         public static String describe(byte[][] args) {
             return "" + OpCodeExecutor.intFromBytes(args[0]);
         }
         public static OpCode build(Integer label) {
-            return new OpCode(OpCode.Type.GOTO, new byte[][]{
-
+            return new OpCode(Type.GOTO, new byte[][]{
+                OpCodeExecutor.bytesFromUnsignedInt(label)
             });
         }
     }
-    private static class LabelOpCode {
+    public static class LabelOpCode {
         public static String describe(byte[][] args) {
             return "" + OpCodeExecutor.intFromBytes(args[0]);
         }
-        public static OpCode build(File toInclude) {
-            return new OpCode(OpCode.Type.INCLUDE, new byte[][]{
-                    toInclude.getAbsolutePath().getBytes(StandardCharsets.UTF_8)
+        public static OpCode build(Integer label) {
+            return new OpCode(Type.LABEL, new byte[][]{
+                    OpCodeExecutor.bytesFromUnsignedInt(label)
             });
         }
     }
-    private static class QuackOpCode {
+    public static class QuackOpCode {
         public static String describe(byte[][] args) {
             return "just quack";
         }
-        public static OpCode build(File toInclude) {
-            return new OpCode(OpCode.Type.INCLUDE, new byte[][]{
-                    toInclude.getAbsolutePath().getBytes(StandardCharsets.UTF_8)
-            });
+        public static OpCode build() {
+            return new OpCode(Type.PRINT_QUACK, new byte[][]{});
         }
     }
     public enum Type {
@@ -56,7 +55,8 @@ public class OpCode {
         LOAD((byte) 0x07), INT_CONST((byte) 0x08),
         STRING_CONST((byte) 0x09), GOTO((byte) 0x10, GotoOpCode.class),
         LABEL((byte) 0x11, LabelOpCode.class), CLASS_DEF((byte) 0x12),
-        METHOD_DEF((byte) 0x13), PRINT_QUACK((byte) 0x14, QuackOpCode.class);
+        METHOD_DEF((byte) 0x13), PRINT_QUACK((byte) 0x14, QuackOpCode.class),
+        RETURN((byte) 0x15);
 
         private byte code;
         private Class opcodeClass;
