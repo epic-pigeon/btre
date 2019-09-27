@@ -71,13 +71,22 @@ public class FileManager {
         return result;
     }
 
-    public static File getFile(List<File> filePath, String path) throws IOException {
+    public static File getFile(List<File> filePath, String path) {
         File toFind = new File(path);
         for (File file: filePath) {
-            if (Files.isSameFile(Paths.get(file.toURI()), Paths.get(toFind.toURI()))) {
-                return file;
+            try {
+                if (Files.isSameFile(Paths.get(file.toURI()), Paths.get(toFind.toURI()))) {
+                    return file;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
             }
         }
         return null;
+    }
+
+    public static byte[] readFile(File file) throws IOException {
+        return Files.readAllBytes(Paths.get(file.toURI()));
     }
 }

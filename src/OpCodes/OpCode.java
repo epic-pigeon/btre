@@ -6,7 +6,11 @@ import java.util.Objects;
 
 public class OpCode {
     public enum Type {
-        INCLUDE((byte) 0x02);
+        INCLUDE((byte) 0x02), COPY((byte) 0x03),
+        INVOKE_VIRTUAL((byte) 0x04), CAST((byte) 0x05),
+        INVOKE_STATIC((byte) 0x06), STORE((byte) 0x06),
+        LOAD((byte) 0x07), INT_CONST((byte) 0x08),
+        STRING_CONST((byte) 0x09);
 
         private byte code;
 
@@ -25,23 +29,23 @@ public class OpCode {
     }
 
     private Type type;
-    private byte[] arg;
+    private byte[][] args;
 
-    public OpCode(Type type, byte[] arg) {
+    public OpCode(Type type, byte[][] arg) {
         Objects.requireNonNull(this.type = type, "Type should not be null");
-        Objects.requireNonNull(this.arg = arg, "Argument should not be null");
+        Objects.requireNonNull(this.args = arg, "Argument should not be null");
     }
 
     public Type getType() {
         return type;
     }
 
-    public byte[] getArg() {
-        return arg;
+    public byte[][] getArgs() {
+        return args;
     }
 
     public byte[] toBytecode() {
-        byte[] encodedArg = BytecodeParser.encodeValue(arg);
+        byte[] encodedArg = BytecodeParser.buildBytecodeArgs(args);
         byte[] result = new byte[encodedArg.length + 1];
         result[0] = type.getCode();
         System.arraycopy(encodedArg, 0, result, 1, encodedArg.length);
